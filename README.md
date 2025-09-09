@@ -182,6 +182,43 @@ The viewer can be wrapped with Electron or Tauri to create a desktop application
 
 Note: PDF viewing relies on the browser's built-in PDF viewer.
 
+## GitHub Pages Deployment
+
+### Quick Setup
+
+1. **Create GitHub Repository**:
+   - Go to https://github.com/new
+   - Repository name: `paper-calc-viewer`
+   - Description: `A React-based web application for viewing PDF papers alongside interactive HTML calculators`
+   - Set to Public
+   - Click "Create repository"
+
+2. **Push Code to GitHub**:
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/paper-calc-viewer.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+3. **Enable GitHub Pages**:
+   - Go to your repository on GitHub
+   - Click "Settings" tab
+   - Scroll to "Pages" in the left sidebar
+   - Under "Source", select "GitHub Actions"
+   - The app will automatically deploy when you push changes
+
+4. **Access Your App**:
+   - Your app will be available at: `https://YOUR_USERNAME.github.io/paper-calc-viewer/`
+   - First deployment takes a few minutes
+
+### Manual Deployment
+
+If you prefer manual deployment:
+```bash
+npm install
+npm run deploy
+```
+
 ## License
 
 This project is open source and available under the MIT License.
