@@ -107,7 +107,7 @@ export default function PaperCalcViewer() {
       alert(`Bundle missing ${manifest.paper}`);
       return;
     }
-    const pdfBlob = new Blob([pdfEntry], { type: "application/pdf" });
+    const pdfBlob = new Blob([new Uint8Array(pdfEntry)], { type: "application/pdf" });
     const pdfObjUrl = URL.createObjectURL(pdfBlob);
     setPdfUrl(pdfObjUrl);
     setPdfFile(new File([pdfBlob], manifest.paper.split("/").pop() || "paper.pdf", { type: "application/pdf" }));
@@ -118,7 +118,7 @@ export default function PaperCalcViewer() {
       alert(`Bundle missing ${manifest.app}`);
       return;
     }
-    const appBlob = new Blob([appEntry], { type: "text/html" });
+    const appBlob = new Blob([new Uint8Array(appEntry)], { type: "text/html" });
     const appObjUrl = URL.createObjectURL(appBlob);
     setAppUrl(appObjUrl);
     setAppSrcDoc(null);
@@ -175,7 +175,7 @@ export default function PaperCalcViewer() {
       [appName]: appBytes
     }, { level: 9 });
 
-    const blob = new Blob([zipped], { type: "application/zip" });
+    const blob = new Blob([new Uint8Array(zipped)], { type: "application/zip" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = (manifest.title || "bundle") + ".texhtml"; // custom extension (zip under the hood)
