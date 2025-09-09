@@ -195,7 +195,7 @@ Note: PDF viewing relies on the browser's built-in PDF viewer.
 
 2. **Push Code to GitHub**:
    ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/paper-calc-viewer.git
+   git remote add origin https://github.com/HousamKak/paper-calc-viewer.git
    git branch -M main
    git push -u origin main
    ```
@@ -208,7 +208,7 @@ Note: PDF viewing relies on the browser's built-in PDF viewer.
    - The app will automatically deploy when you push changes
 
 4. **Access Your App**:
-   - Your app will be available at: `https://YOUR_USERNAME.github.io/paper-calc-viewer/`
+   - Your app will be available at: `https://HousamKak.github.io/paper-calc-viewer/`
    - First deployment takes a few minutes
 
 ### Manual Deployment
