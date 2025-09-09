@@ -1,5 +1,5 @@
-import PaperCalcViewer from "./PaperCalcViewer";
+import PaperHtmlViewer from "./PaperCalcViewer";
 
 export default function App() {
-  return <PaperCalcViewer />;
+  return <PaperHtmlViewer />;
 }

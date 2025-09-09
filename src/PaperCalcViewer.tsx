@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // Optional: lightweight ZIP utils for bundling/unbundling .texhtml files
 // (All NPM libs are available; fflate is tiny and fast.)
 import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
@@ -26,8 +26,9 @@ function useLocalStorage<T>(key: string, initial: T) {
 
 // Types
 type ViewMode = "split" | "paper" | "app";
+type Theme = "light" | "dark";
 
-export default function PaperCalcViewer() {
+export default function PaperHtmlViewer() {
   // PDF source (either object URL or remote URL)
   const [pdfUrl, setPdfUrl] = useLocalStorage<string | null>("pcv.pdfUrl", null);
   const [pdfFile, setPdfFile] = useState<File | null>(null); // to allow bundling
@@ -44,6 +45,11 @@ export default function PaperCalcViewer() {
   );
   const [splitPct, setSplitPct] = useLocalStorage<number>("pcv.splitPct", 50);
   const [swap, setSwap] = useLocalStorage<boolean>("pcv.swap", false);
+  const [theme, setTheme] = useLocalStorage<Theme>("pcv.theme", "light");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pdfZoom, setPdfZoom] = useLocalStorage<number>("pcv.pdfZoom", 100);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showToolbar, setShowToolbar] = useLocalStorage<boolean>("pcv.showToolbar", true);
 
   // Build iframe props for the calculator pane
   const calcIframeProps = useMemo(() => {
@@ -58,6 +64,24 @@ export default function PaperCalcViewer() {
     const url = URL.createObjectURL(file);
     setPdfUrl(url);
     setPdfFile(file);
+  };
+
+  const onClearPdf = () => {
+    if (pdfUrl && pdfUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(pdfUrl);
+    }
+    setPdfUrl(null);
+    setPdfFile(null);
+    setPdfZoom(100);
+  };
+
+  const onClearHtml = () => {
+    if (appUrl && appUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(appUrl);
+    }
+    setAppUrl(null);
+    setAppSrcDoc(null);
+    setAppFile(null);
   };
 
   const onPickHtml = (file: File) => {
@@ -184,75 +208,356 @@ export default function PaperCalcViewer() {
     a.remove();
   };
 
+  // --- Drag split functionality ---
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const container = document.querySelector('.split-container') as HTMLElement;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    let newSplit;
+    
+    if (orientation === 'horizontal') {
+      const relativeX = e.clientX - rect.left;
+      newSplit = (relativeX / rect.width) * 100;
+    } else {
+      const relativeY = e.clientY - rect.top;
+      newSplit = (relativeY / rect.height) * 100;
+    }
+    
+    newSplit = Math.max(15, Math.min(85, newSplit));
+    setSplitPct(newSplit);
+  }, [isDragging, orientation]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = orientation === 'horizontal' ? 'col-resize' : 'row-resize';
+      document.body.style.userSelect = 'none';
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp, orientation]);
+
+  // --- Keyboard shortcuts ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case '1':
+            e.preventDefault();
+            setView('split');
+            break;
+          case '2':
+            e.preventDefault();
+            setView('paper');
+            break;
+          case '3':
+            e.preventDefault();
+            setView('app');
+            break;
+          case 'd':
+            e.preventDefault();
+            setTheme(theme === 'light' ? 'dark' : 'light');
+            break;
+          case 'f':
+            e.preventDefault();
+            toggleFullscreen();
+            break;
+          case 's':
+            e.preventDefault();
+            setSwap(s => !s);
+            break;
+          case 'h':
+            e.preventDefault();
+            setShowToolbar(t => !t);
+            break;
+        }
+      }
+      if (e.key === 'F11') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [theme]);
+
+  // --- Fullscreen functionality ---
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // --- Theme effect ---
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
   // UI bits
   const filePdfRef = useRef<HTMLInputElement>(null);
   const fileHtmlRef = useRef<HTMLInputElement>(null);
   const fileBundleRef = useRef<HTMLInputElement>(null);
 
   const Pane = ({ children }: { children: React.ReactNode }) => (
-    <div className="w-full h-full bg-white/50 rounded-2xl overflow-hidden shadow-sm border">
+    <div className={classNames(
+      "w-full h-full rounded-2xl overflow-hidden shadow-sm border transition-colors",
+      theme === 'dark' 
+        ? "bg-gray-800/50 border-gray-600" 
+        : "bg-white/50 border-gray-200"
+    )}>
       {children}
     </div>
   );
 
   const Toolbar = () => (
-    <div className="flex flex-wrap items-center gap-2 p-3 border-b bg-gradient-to-b from-white to-gray-50 sticky top-0 z-10">
-      <div className="text-xl font-semibold mr-2">Paper + Calculator Viewer</div>
+    <div className={classNames(
+      "flex flex-wrap items-center gap-2 p-3 border-b sticky top-0 z-10 transition-colors",
+      theme === 'dark' 
+        ? "bg-gradient-to-b from-gray-900 to-gray-800 border-gray-600 text-white" 
+        : "bg-gradient-to-b from-white to-gray-50 border-gray-200"
+    )}>
+      <div className="text-xl font-semibold mr-2">Paper + HTML Viewer</div>
 
+      {/* File Operations */}
       <div className="flex items-center gap-2">
-        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={() => filePdfRef.current?.click()}>Load PDF</button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => filePdfRef.current?.click()}>
+          📄 Load PDF
+        </button>
         <input ref={filePdfRef} className="hidden" type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && onPickPdf(e.target.files[0])} />
 
-        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={() => fileHtmlRef.current?.click()}>Load Calculator (HTML)</button>
+        {pdfFile && (
+          <button className={classNames(
+            "px-2 py-1.5 rounded-xl border transition-colors text-red-600",
+            theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+          )} onClick={onClearPdf} title="Clear PDF">
+            ❌
+          </button>
+        )}
+
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => fileHtmlRef.current?.click()}>
+          🌐 Load HTML
+        </button>
         <input ref={fileHtmlRef} className="hidden" type="file" accept="text/html,.html" onChange={(e) => e.target.files?.[0] && onPickHtml(e.target.files[0])} />
 
-        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={() => fileBundleRef.current?.click()}>Open .texhtml</button>
+        {appFile && (
+          <button className={classNames(
+            "px-2 py-1.5 rounded-xl border transition-colors text-red-600",
+            theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+          )} onClick={onClearHtml} title="Clear HTML">
+            ❌
+          </button>
+        )}
+      </div>
+
+      <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
+
+      {/* Bundle Operations */}
+      <div className="flex items-center gap-2">
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => fileBundleRef.current?.click()}>
+          📦 Open Bundle
+        </button>
         <input ref={fileBundleRef} className="hidden" type="file" accept=".texhtml,.zip" onChange={(e) => e.target.files?.[0] && onOpenBundle(e.target.files[0])} />
 
-        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={onSaveBundle}>Save .texhtml</button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={onSaveBundle}>
+          💾 Save Bundle
+        </button>
       </div>
 
-      <div className="mx-4 h-6 w-px bg-gray-200" />
+      <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
 
+      {/* View Controls */}
       <div className="flex items-center gap-1">
-        <button className={classNames("px-3 py-1.5 rounded-xl border", view === "split" && "bg-gray-100 font-semibold")}
-          onClick={() => setView("split")}>Split</button>
-        <button className={classNames("px-3 py-1.5 rounded-xl border", view === "paper" && "bg-gray-100 font-semibold")}
-          onClick={() => setView("paper")}>Paper</button>
-        <button className={classNames("px-3 py-1.5 rounded-xl border", view === "app" && "bg-gray-100 font-semibold")}
-          onClick={() => setView("app")}>Calculator</button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          view === "split" 
+            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
+            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setView("split")}>
+          Split <span className="text-xs opacity-60">(⌘1)</span>
+        </button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          view === "paper" 
+            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
+            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setView("paper")}>
+          Paper <span className="text-xs opacity-60">(⌘2)</span>
+        </button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          view === "app" 
+            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
+            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setView("app")}>
+          HTML <span className="text-xs opacity-60">(⌘3)</span>
+        </button>
       </div>
 
-      <div className="mx-4 h-6 w-px bg-gray-200" />
+      <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
 
-      {view === "split" && (
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Split:</label>
-          <input type="range" min={15} max={85} value={splitPct} onChange={(e) => setSplitPct(parseInt(e.target.value))} />
-          <span className="w-10 text-center text-sm text-gray-600">{splitPct}%</span>
-        </div>
+      {/* PDF Zoom Controls */}
+      {pdfUrl && (view === "paper" || view === "split") && (
+        <>
+          <div className="flex items-center gap-2">
+            <label className={classNames("text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
+              Zoom:
+            </label>
+            <button className={classNames(
+              "px-2 py-1 rounded border transition-colors",
+              theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+            )} onClick={() => setPdfZoom(Math.max(25, pdfZoom - 25))}>
+              −
+            </button>
+            <span className={classNames("w-12 text-center text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
+              {pdfZoom}%
+            </span>
+            <button className={classNames(
+              "px-2 py-1 rounded border transition-colors",
+              theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+            )} onClick={() => setPdfZoom(Math.min(200, pdfZoom + 25))}>
+              +
+            </button>
+          </div>
+          <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
+        </>
       )}
 
-      <div className="mx-4 h-6 w-px bg-gray-200" />
+      {/* Split Controls */}
+      {view === "split" && (
+        <>
+          <div className="flex items-center gap-2">
+            <label className={classNames("text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
+              Split:
+            </label>
+            <input 
+              type="range" 
+              min={15} 
+              max={85} 
+              value={splitPct} 
+              onChange={(e) => setSplitPct(parseInt(e.target.value))}
+              className="w-20"
+            />
+            <span className={classNames("w-10 text-center text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
+              {splitPct}%
+            </span>
+          </div>
+          <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
+        </>
+      )}
 
+      {/* Layout Controls */}
       <div className="flex items-center gap-1">
-        <button className={classNames("px-3 py-1.5 rounded-xl border", orientation === "horizontal" && "bg-gray-100 font-semibold")}
-          onClick={() => setOrientation("horizontal")}>Side‑by‑side</button>
-        <button className={classNames("px-3 py-1.5 rounded-xl border", orientation === "vertical" && "bg-gray-100 font-semibold")}
-          onClick={() => setOrientation("vertical")}>Stacked</button>
-        <button className={classNames("px-3 py-1.5 rounded-xl border", swap && "bg-gray-100 font-semibold")}
-          onClick={() => setSwap((s) => !s)}>Swap</button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          orientation === "horizontal" 
+            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
+            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setOrientation("horizontal")}>
+          ↔️
+        </button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          orientation === "vertical" 
+            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
+            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setOrientation("vertical")}>
+          ↕️
+        </button>
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          swap 
+            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
+            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setSwap((s) => !s)}>
+          🔄 <span className="text-xs opacity-60">(⌘S)</span>
+        </button>
       </div>
 
-      <div className="ml-auto text-sm text-gray-500">Drop a PDF + HTML anywhere</div>
+      {/* Theme and Tools */}
+      <div className="ml-auto flex items-center gap-2">
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} title="Toggle Theme (⌘D)">
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={toggleFullscreen} title="Fullscreen (F11)">
+          {isFullscreen ? '🪟' : '⛶'}
+        </button>
+
+        <button className={classNames(
+          "px-3 py-1.5 rounded-xl border transition-colors",
+          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+        )} onClick={() => setShowToolbar(false)} title="Hide Toolbar (⌘H)">
+          ❌
+        </button>
+
+        <div className={classNames("text-sm", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
+          Drop PDF + HTML anywhere
+        </div>
+      </div>
     </div>
   );
 
   const PaperPane = () => (
     <Pane>
       {pdfUrl ? (
-        // Use the browser PDF viewer
-        <iframe title="paper" src={`${pdfUrl}#view=FitH`} className="w-full h-full" />
+        // Use the browser PDF viewer with zoom
+        <iframe 
+          title="paper" 
+          src={`${pdfUrl}#view=FitH&zoom=${pdfZoom}`} 
+          className="w-full h-full" 
+        />
       ) : (
         <DropHint kind="PDF" />
       )}
@@ -270,8 +575,27 @@ export default function PaperCalcViewer() {
   );
 
   return (
-    <div className="w-full h-screen flex flex-col" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-      <Toolbar />
+    <div className={classNames(
+      "w-full h-screen flex flex-col transition-colors",
+      theme === 'dark' ? "bg-gray-900" : "bg-gray-100"
+    )} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+      {showToolbar && <Toolbar />}
+
+      {/* Floating toolbar toggle button */}
+      {!showToolbar && (
+        <button
+          className={classNames(
+            "fixed top-4 left-4 z-50 px-3 py-2 rounded-xl border transition-all duration-300 shadow-lg",
+            theme === 'dark' 
+              ? "bg-gray-800 border-gray-600 text-white hover:bg-gray-700" 
+              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+          )}
+          onClick={() => setShowToolbar(true)}
+          title="Show Toolbar (⌘H)"
+        >
+          ⚙️
+        </button>
+      )}
 
       {/* Work area */}
       {view === "paper" && (
@@ -287,21 +611,55 @@ export default function PaperCalcViewer() {
       )}
 
       {view === "split" && (
-        <div className={classNames("flex-1 p-3", orientation === "horizontal" ? "" : "")}>
+        <div className={classNames("flex-1 p-3 split-container", orientation === "horizontal" ? "" : "")}>
           {orientation === "horizontal" ? (
-            <div className="w-full h-full flex gap-3">
+            <div className="w-full h-full flex gap-3 relative">
               <div className="h-full" style={{ width: `${splitPct}%` }}>
                 {swap ? <AppPane /> : <PaperPane />}
               </div>
+              
+              {/* Draggable divider */}
+              <div 
+                className={classNames(
+                  "w-1 h-full cursor-col-resize flex items-center justify-center group relative",
+                  theme === 'dark' ? "hover:bg-gray-600" : "hover:bg-gray-300"
+                )}
+                onMouseDown={handleMouseDown}
+              >
+                <div className={classNames(
+                  "w-1 h-16 rounded-full transition-all",
+                  isDragging 
+                    ? theme === 'dark' ? "bg-blue-400" : "bg-blue-500"
+                    : theme === 'dark' ? "bg-gray-600 group-hover:bg-gray-500" : "bg-gray-300 group-hover:bg-gray-400"
+                )} />
+              </div>
+              
               <div className="h-full flex-1">
                 {swap ? <PaperPane /> : <AppPane />}
               </div>
             </div>
           ) : (
-            <div className="w-full h-full flex flex-col gap-3">
+            <div className="w-full h-full flex flex-col gap-3 relative">
               <div className="w-full" style={{ height: `${splitPct}%` }}>
                 {swap ? <AppPane /> : <PaperPane />}
               </div>
+              
+              {/* Draggable divider */}
+              <div 
+                className={classNames(
+                  "w-full h-1 cursor-row-resize flex items-center justify-center group relative",
+                  theme === 'dark' ? "hover:bg-gray-600" : "hover:bg-gray-300"
+                )}
+                onMouseDown={handleMouseDown}
+              >
+                <div className={classNames(
+                  "w-16 h-1 rounded-full transition-all",
+                  isDragging 
+                    ? theme === 'dark' ? "bg-blue-400" : "bg-blue-500"
+                    : theme === 'dark' ? "bg-gray-600 group-hover:bg-gray-500" : "bg-gray-300 group-hover:bg-gray-400"
+                )} />
+              </div>
+              
               <div className="w-full flex-1">
                 {swap ? <PaperPane /> : <AppPane />}
               </div>
@@ -316,9 +674,13 @@ export default function PaperCalcViewer() {
 function DropHint({ kind }: { kind: "PDF" | "HTML" }) {
   return (
     <div className="h-full w-full flex items-center justify-center">
-      <div className="text-center text-gray-500">
+      <div className="text-center text-gray-500 dark:text-gray-400">
+        <div className="text-6xl mb-4">{kind === "PDF" ? "📄" : "🌐"}</div>
         <div className="text-lg font-medium mb-1">No {kind} loaded</div>
         <div className="text-sm">Use the toolbar or drop a {kind} file here</div>
+        <div className="text-xs mt-2 opacity-60">
+          {kind === "PDF" ? "Supports: .pdf files" : "Supports: .html files"}
+        </div>
       </div>
     </div>
   );
