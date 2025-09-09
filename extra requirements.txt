@@ -1,0 +1,79 @@
+Love this idea. Easiest path: ship a tiny web “viewer” that loads your PDF paper and your HTML/JS calculator and lets the reader toggle or split-screen them.
+
+I’ve put a ready-to-run React component on the canvas called Paper+Calculator Viewer. It already supports:
+
+Drag-and-drop a paper.pdf and a calculator.html
+
+Buttons for Split / Paper only / Calculator only
+
+Side-by-side or Stacked layout + resizable split
+
+Save/Open a .texhtml bundle (zip under the hood) so you can package both together and share one file
+
+How to use it (quick)
+
+Create a React app (Vite or Next).
+
+Vite: npm create vite@latest my-viewer -- --template react-ts && cd my-viewer && npm i fflate && npm i && npm run dev
+
+Drop the component from the canvas into src/PaperCalcViewer.tsx.
+
+Render it in App.tsx:
+
+import PaperCalcViewer from "./PaperCalcViewer";
+export default function App() { return <PaperCalcViewer />; }
+
+
+Run it, click Load PDF for your compiled LaTeX PDF, and Load Calculator (HTML) for your tool.
+
+Tip: If your calculator is a single self-contained HTML (scripts/css inlined or via absolute URLs), it will load anywhere. If it needs extra files, keep them next to the HTML and use the .texhtml bundle feature below.
+
+The .texhtml bundle (one file to share)
+
+This is just a ZIP with a tiny manifest. The viewer can Open and Save these.
+
+Inside the zip:
+
+manifest.json
+paper.pdf
+calculator.html
+
+
+manifest.json
+
+{
+  "version": 1,
+  "title": "My Paper + Calculator",
+  "paper": "paper.pdf",
+  "app": "calculator.html",
+  "layout": "split",
+  "split": 55,
+  "orientation": "horizontal"
+}
+
+
+You can make one from the viewer (click Save .texhtml) or build it yourself (zip those files and rename to .texhtml).
+
+Packaging options (pick your vibe)
+
+Simple web app (recommended): Host the viewer + your files. Readers open a link; they can toggle split view or open a .texhtml bundle.
+
+Offline/PWA: Add a service worker to cache the PDF and calculator for offline reading.
+
+Desktop app: Wrap the same viewer in Electron or Tauri if you want a distributable “reader” that opens .texhtml files from disk.
+
+Smooth LaTeX → viewer workflow
+
+Compile LaTeX to paper.pdf.
+
+Output your calculator as calculator.html (ideally self-contained).
+
+Drag both into the viewer and Save .texhtml to ship a single file, or deploy them to /public and pass URLs.
+
+If you want, I can also drop:
+
+a minimal Vite project scaffold wired to this component,
+
+a service worker to make it offline,
+
+or an Electron/Tauri wrapper that registers .texhtml as a double-clickable file type.

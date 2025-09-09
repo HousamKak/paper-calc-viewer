@@ -1,0 +1,325 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+// Optional: lightweight ZIP utils for bundling/unbundling .texhtml files
+// (All NPM libs are available; fflate is tiny and fast.)
+import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
+
+// --- Small helpers ---
+function classNames(...xs: Array<string | false | null | undefined>) {
+  return xs.filter(Boolean).join(" ");
+}
+
+// Persist simple settings
+function useLocalStorage<T>(key: string, initial: T) {
+  const [val, setVal] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : initial;
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  }, [key, val]);
+  return [val, setVal] as const;
+}
+
+// Types
+type ViewMode = "split" | "paper" | "app";
+
+export default function PaperCalcViewer() {
+  // PDF source (either object URL or remote URL)
+  const [pdfUrl, setPdfUrl] = useLocalStorage<string | null>("pcv.pdfUrl", null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null); // to allow bundling
+
+  // App source: either iframe src (URL) OR inline srcDoc string
+  const [appUrl, setAppUrl] = useLocalStorage<string | null>("pcv.appUrl", null);
+  const [appSrcDoc, setAppSrcDoc] = useState<string | null>(null);
+  const [appFile, setAppFile] = useState<File | null>(null);
+
+  const [view, setView] = useLocalStorage<ViewMode>("pcv.view", "split");
+  const [orientation, setOrientation] = useLocalStorage<"horizontal" | "vertical">(
+    "pcv.orient",
+    "horizontal"
+  );
+  const [splitPct, setSplitPct] = useLocalStorage<number>("pcv.splitPct", 50);
+  const [swap, setSwap] = useLocalStorage<boolean>("pcv.swap", false);
+
+  // Build iframe props for the calculator pane
+  const calcIframeProps = useMemo(() => {
+    if (appUrl) return { src: appUrl, srcDoc: undefined as any };
+    if (appSrcDoc) return { src: undefined as any, srcDoc: appSrcDoc };
+    return { src: undefined as any, srcDoc: undefined as any };
+  }, [appUrl, appSrcDoc]);
+
+  // --- File handlers ---
+  const onPickPdf = (file: File) => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPdfUrl(url);
+    setPdfFile(file);
+  };
+
+  const onPickHtml = (file: File) => {
+    if (!file) return;
+    setAppFile(file);
+    // Try to keep it as a Blob URL to preserve relative resource loading if any
+    // If your calculator is a single self-contained HTML (no external assets),
+    // using srcDoc is also fine. We'll prefer Blob URL to be safe.
+    const url = URL.createObjectURL(file);
+    setAppUrl(url);
+    setAppSrcDoc(null);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const items = Array.from(e.dataTransfer.files || []);
+    if (!items.length) return;
+    const pdf = items.find((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+    const html = items.find((f) => f.type.includes("html") || f.name.toLowerCase().endsWith(".html"));
+    if (pdf) onPickPdf(pdf);
+    if (html) onPickHtml(html);
+  };
+
+  // --- .texhtml bundle support (a simple ZIP with a manifest) ---
+  // Layout/spec:
+  // manifest.json { title, paper, app, layout, split }
+  // paper.pdf (binary), calculator.html (text)
+  const onOpenBundle = async (file: File) => {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const files = unzipSync(buf);
+    const manifestRaw = files["manifest.json"]; // required
+    if (!manifestRaw) {
+      alert("Bundle missing manifest.json");
+      return;
+    }
+    const manifest = JSON.parse(strFromU8(manifestRaw)) as {
+      title?: string;
+      paper: string; // path inside zip
+      app: string; // path inside zip
+      layout?: ViewMode;
+      split?: number;
+      orientation?: "horizontal" | "vertical";
+    };
+    // PDF
+    const pdfEntry = files[manifest.paper];
+    if (!pdfEntry) {
+      alert(`Bundle missing ${manifest.paper}`);
+      return;
+    }
+    const pdfBlob = new Blob([pdfEntry], { type: "application/pdf" });
+    const pdfObjUrl = URL.createObjectURL(pdfBlob);
+    setPdfUrl(pdfObjUrl);
+    setPdfFile(new File([pdfBlob], manifest.paper.split("/").pop() || "paper.pdf", { type: "application/pdf" }));
+
+    // HTML (we'll use a Blob URL to preserve any relative paths that were zipped)
+    const appEntry = files[manifest.app];
+    if (!appEntry) {
+      alert(`Bundle missing ${manifest.app}`);
+      return;
+    }
+    const appBlob = new Blob([appEntry], { type: "text/html" });
+    const appObjUrl = URL.createObjectURL(appBlob);
+    setAppUrl(appObjUrl);
+    setAppSrcDoc(null);
+    setAppFile(new File([appBlob], manifest.app.split("/").pop() || "calculator.html", { type: "text/html" }));
+
+    if (manifest.layout) setView(manifest.layout);
+    if (typeof manifest.split === "number") setSplitPct(Math.min(85, Math.max(15, manifest.split)));
+    if (manifest.orientation) setOrientation(manifest.orientation);
+  };
+
+  const onSaveBundle = async () => {
+    if (!pdfFile || (!appFile && !appSrcDoc && !appUrl)) {
+      alert("Please load a PDF and a calculator first.");
+      return;
+    }
+    // Get HTML bytes
+    let appBytes: Uint8Array | null = null;
+    let appName = "calculator.html";
+
+    if (appFile) {
+      const buf = new Uint8Array(await appFile.arrayBuffer());
+      appBytes = buf;
+      appName = appFile.name || appName;
+    } else if (appSrcDoc) {
+      appBytes = strToU8(appSrcDoc);
+    } else if (appUrl && appUrl.startsWith("blob:")) {
+      // Attempt to fetch blob URL (works in most cases)
+      const res = await fetch(appUrl);
+      const ab = await res.arrayBuffer();
+      appBytes = new Uint8Array(ab);
+    }
+
+    if (!appBytes) {
+      alert("Could not capture calculator HTML bytes. If you used a remote URL, download it first.");
+      return;
+    }
+
+    const pdfName = pdfFile.name || "paper.pdf";
+    const pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
+
+    const manifest = {
+      title: pdfName.replace(/\.pdf$/i, ""),
+      paper: pdfName,
+      app: appName,
+      layout: view,
+      split: splitPct,
+      orientation,
+      version: 1
+    };
+
+    const zipped = zipSync({
+      "manifest.json": strToU8(JSON.stringify(manifest, null, 2)),
+      [pdfName]: pdfBytes,
+      [appName]: appBytes
+    }, { level: 9 });
+
+    const blob = new Blob([zipped], { type: "application/zip" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (manifest.title || "bundle") + ".texhtml"; // custom extension (zip under the hood)
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  // UI bits
+  const filePdfRef = useRef<HTMLInputElement>(null);
+  const fileHtmlRef = useRef<HTMLInputElement>(null);
+  const fileBundleRef = useRef<HTMLInputElement>(null);
+
+  const Pane = ({ children }: { children: React.ReactNode }) => (
+    <div className="w-full h-full bg-white/50 rounded-2xl overflow-hidden shadow-sm border">
+      {children}
+    </div>
+  );
+
+  const Toolbar = () => (
+    <div className="flex flex-wrap items-center gap-2 p-3 border-b bg-gradient-to-b from-white to-gray-50 sticky top-0 z-10">
+      <div className="text-xl font-semibold mr-2">Paper + Calculator Viewer</div>
+
+      <div className="flex items-center gap-2">
+        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={() => filePdfRef.current?.click()}>Load PDF</button>
+        <input ref={filePdfRef} className="hidden" type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && onPickPdf(e.target.files[0])} />
+
+        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={() => fileHtmlRef.current?.click()}>Load Calculator (HTML)</button>
+        <input ref={fileHtmlRef} className="hidden" type="file" accept="text/html,.html" onChange={(e) => e.target.files?.[0] && onPickHtml(e.target.files[0])} />
+
+        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={() => fileBundleRef.current?.click()}>Open .texhtml</button>
+        <input ref={fileBundleRef} className="hidden" type="file" accept=".texhtml,.zip" onChange={(e) => e.target.files?.[0] && onOpenBundle(e.target.files[0])} />
+
+        <button className="px-3 py-1.5 rounded-xl border hover:bg-gray-50" onClick={onSaveBundle}>Save .texhtml</button>
+      </div>
+
+      <div className="mx-4 h-6 w-px bg-gray-200" />
+
+      <div className="flex items-center gap-1">
+        <button className={classNames("px-3 py-1.5 rounded-xl border", view === "split" && "bg-gray-100 font-semibold")}
+          onClick={() => setView("split")}>Split</button>
+        <button className={classNames("px-3 py-1.5 rounded-xl border", view === "paper" && "bg-gray-100 font-semibold")}
+          onClick={() => setView("paper")}>Paper</button>
+        <button className={classNames("px-3 py-1.5 rounded-xl border", view === "app" && "bg-gray-100 font-semibold")}
+          onClick={() => setView("app")}>Calculator</button>
+      </div>
+
+      <div className="mx-4 h-6 w-px bg-gray-200" />
+
+      {view === "split" && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Split:</label>
+          <input type="range" min={15} max={85} value={splitPct} onChange={(e) => setSplitPct(parseInt(e.target.value))} />
+          <span className="w-10 text-center text-sm text-gray-600">{splitPct}%</span>
+        </div>
+      )}
+
+      <div className="mx-4 h-6 w-px bg-gray-200" />
+
+      <div className="flex items-center gap-1">
+        <button className={classNames("px-3 py-1.5 rounded-xl border", orientation === "horizontal" && "bg-gray-100 font-semibold")}
+          onClick={() => setOrientation("horizontal")}>Side‑by‑side</button>
+        <button className={classNames("px-3 py-1.5 rounded-xl border", orientation === "vertical" && "bg-gray-100 font-semibold")}
+          onClick={() => setOrientation("vertical")}>Stacked</button>
+        <button className={classNames("px-3 py-1.5 rounded-xl border", swap && "bg-gray-100 font-semibold")}
+          onClick={() => setSwap((s) => !s)}>Swap</button>
+      </div>
+
+      <div className="ml-auto text-sm text-gray-500">Drop a PDF + HTML anywhere</div>
+    </div>
+  );
+
+  const PaperPane = () => (
+    <Pane>
+      {pdfUrl ? (
+        // Use the browser PDF viewer
+        <iframe title="paper" src={`${pdfUrl}#view=FitH`} className="w-full h-full" />
+      ) : (
+        <DropHint kind="PDF" />
+      )}
+    </Pane>
+  );
+
+  const AppPane = () => (
+    <Pane>
+      {appUrl || appSrcDoc ? (
+        <iframe title="calculator" className="w-full h-full" {...calcIframeProps} />
+      ) : (
+        <DropHint kind="HTML" />
+      )}
+    </Pane>
+  );
+
+  return (
+    <div className="w-full h-screen flex flex-col" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+      <Toolbar />
+
+      {/* Work area */}
+      {view === "paper" && (
+        <div className="flex-1 p-3">
+          <div className="w-full h-full"><PaperPane /></div>
+        </div>
+      )}
+
+      {view === "app" && (
+        <div className="flex-1 p-3">
+          <div className="w-full h-full"><AppPane /></div>
+        </div>
+      )}
+
+      {view === "split" && (
+        <div className={classNames("flex-1 p-3", orientation === "horizontal" ? "" : "")}>
+          {orientation === "horizontal" ? (
+            <div className="w-full h-full flex gap-3">
+              <div className="h-full" style={{ width: `${splitPct}%` }}>
+                {swap ? <AppPane /> : <PaperPane />}
+              </div>
+              <div className="h-full flex-1">
+                {swap ? <PaperPane /> : <AppPane />}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full flex flex-col gap-3">
+              <div className="w-full" style={{ height: `${splitPct}%` }}>
+                {swap ? <AppPane /> : <PaperPane />}
+              </div>
+              <div className="w-full flex-1">
+                {swap ? <PaperPane /> : <AppPane />}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DropHint({ kind }: { kind: "PDF" | "HTML" }) {
+  return (
+    <div className="h-full w-full flex items-center justify-center">
+      <div className="text-center text-gray-500">
+        <div className="text-lg font-medium mb-1">No {kind} loaded</div>
+        <div className="text-sm">Use the toolbar or drop a {kind} file here</div>
+      </div>
+    </div>
+  );
+}
