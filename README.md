@@ -1,20 +1,26 @@
-# Paper + Calculator Viewer
+# Paper+
 
-A React-based web application for viewing PDF papers alongside interactive HTML calculators in split-screen mode. Perfect for academic papers with accompanying computational tools, allowing readers to reference the paper while using the calculator side-by-side.
+A modern, minimalist web application for viewing PDF papers alongside interactive HTML content in split-screen mode. Perfect for academic papers with accompanying computational tools, educational content, or any scenario where you need to reference documents while using interactive web apps side-by-side.
 
-## Features
+## ✨ Features
 
-- **Drag & Drop Support**: Simply drag PDF and HTML files into the viewer
-- **Multiple View Modes**: 
+- **🎯 Drag & Drop Support**: Simply drag PDF and HTML files anywhere into the viewer
+- **👁️ Multiple View Modes**:
   - Split view (side-by-side or stacked)
   - Paper-only view
-  - Calculator-only view
-- **Flexible Layout**: 
-  - Horizontal (side-by-side) or vertical (stacked) orientations
-  - Adjustable split percentage (15% to 85%)
-  - Swap positions of PDF and calculator panes
-- **Bundle Format**: Save and share both files as a single `.texhtml` bundle
-- **Persistent Settings**: View preferences are saved locally
+  - HTML-only view
+- **🎨 Modern, Compact UI**:
+  - Minimalist toolbar with icon-based controls
+  - Dark and light themes
+  - Keyboard shortcuts for all major functions
+  - Fullscreen mode support
+- **📐 Flexible Layout**:
+  - Horizontal or vertical split orientations
+  - Draggable divider for precise sizing (15% to 85%)
+  - Quick swap positions with one click
+- **📦 Bundle Format**: Save and share both files as a single `.texhtml` bundle
+- **💾 Persistent Settings**: View preferences automatically saved locally
+- **🔍 PDF Zoom Controls**: Adjust PDF zoom level (25% to 200%)
 
 ## Getting Started
 
@@ -49,29 +55,40 @@ The built files will be in the `dist` directory, ready for deployment to any sta
 
 ### Loading Files
 
-1. **Load PDF**: Click "Load PDF" button or drag a PDF file into the viewer
-2. **Load Calculator**: Click "Load Calculator (HTML)" button or drag an HTML file into the viewer
-3. **Open Bundle**: Click "Open .texhtml" to load a previously saved bundle
+1. **Load PDF**: Click the 📄 button or drag a PDF file anywhere
+2. **Load HTML**: Click the 🌐 button or drag an HTML file anywhere
+3. **Open Bundle**: Click 📦 to load a previously saved `.texhtml` bundle
+
+### Keyboard Shortcuts
+
+- **⌘/Ctrl + 1**: Split view
+- **⌘/Ctrl + 2**: Paper-only view
+- **⌘/Ctrl + 3**: HTML-only view
+- **⌘/Ctrl + D**: Toggle dark/light theme
+- **⌘/Ctrl + S**: Swap panes
+- **⌘/Ctrl + H**: Hide/show toolbar
+- **F11**: Toggle fullscreen
 
 ### View Controls
 
-- **Split/Paper/Calculator**: Switch between different view modes
-- **Split Slider**: Adjust the split percentage when in split view mode
-- **Side-by-side/Stacked**: Choose orientation for split view
-- **Swap**: Switch positions of PDF and calculator panes
+- **View Mode Pills**: Switch between split/paper/HTML views
+- **Orientation Buttons**: ↔ horizontal or ↕ vertical split
+- **Swap Button**: ⇄ switch positions of panes
+- **Split Slider**: Drag the divider or use the slider to adjust split percentage
+- **Zoom Controls**: ± buttons to adjust PDF zoom level
 
 ### Creating .texhtml Bundles
 
 The `.texhtml` format is a ZIP file containing:
 - `manifest.json` - Metadata and layout preferences
-- `paper.pdf` - Your PDF document  
-- `calculator.html` - Your interactive calculator
+- `paper.pdf` - Your PDF document
+- `app.html` - Your interactive HTML content
 
 To create a bundle:
 1. Load both a PDF and HTML file
-2. Configure your preferred layout settings
-3. Click "Save .texhtml"
-4. Share the single `.texhtml` file with others
+2. Configure your preferred layout settings (view mode, split %, orientation)
+3. Click 💾 "Save Bundle"
+4. Share the single `.texhtml` file with others - they can open it to restore your exact layout
 
 ### Bundle Structure
 
@@ -79,18 +96,18 @@ To create a bundle:
 bundle.texhtml (ZIP file)
 ├── manifest.json
 ├── paper.pdf
-└── calculator.html
+└── app.html
 ```
 
 Example `manifest.json`:
 ```json
 {
   "version": 1,
-  "title": "My Paper + Calculator",
+  "title": "My Paper + App",
   "paper": "paper.pdf",
-  "app": "calculator.html",
+  "app": "app.html",
   "layout": "split",
-  "split": 55,
+  "split": 50,
   "orientation": "horizontal"
 }
 ```
@@ -121,26 +138,28 @@ src/
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
 
-## Calculator Requirements
+## HTML Content Requirements
 
-For best results, your HTML calculator should be:
+For best results, your HTML content should be:
 - **Self-contained**: Include all CSS and JavaScript inline or use absolute URLs
 - **Responsive**: Adapt to different container sizes
 - **Cross-origin friendly**: Avoid restrictions that prevent iframe loading
 
-### Example Calculator Structure
+### Example HTML Structure
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Calculator</title>
+    <title>My Interactive App</title>
     <style>
-        /* All styles inline */
+        /* All styles inline for portability */
+        body { font-family: sans-serif; padding: 20px; }
     </style>
 </head>
 <body>
-    <!-- Calculator UI -->
+    <h1>Interactive Content</h1>
+    <!-- Your app UI here -->
     <script>
         // All JavaScript inline
     </script>
@@ -166,12 +185,14 @@ The app can be enhanced with a service worker to work offline. The viewer will c
 
 The viewer can be wrapped with Electron or Tauri to create a desktop application that can register `.texhtml` files as a custom file type.
 
-## Use Cases
+## 💡 Use Cases
 
-- **Academic Papers**: Pair research papers with computational supplements
-- **Educational Content**: Combine theoretical content with interactive examples
-- **Documentation**: Technical documentation with live calculators or demos
-- **Research Tools**: Share reproducible calculations alongside methodology
+- **📚 Academic Papers**: Pair research papers with computational supplements or interactive demos
+- **🎓 Educational Content**: Combine theoretical PDFs with interactive examples and exercises
+- **📖 Technical Documentation**: Reference manuals alongside live code examples or API playgrounds
+- **🔬 Research Tools**: Share reproducible calculations with methodology papers
+- **📊 Data Analysis**: View reports side-by-side with interactive data visualizations
+- **🧮 Mathematical Content**: Math papers with live calculators and visualizations
 
 ## Browser Support
 
@@ -181,43 +202,6 @@ The viewer can be wrapped with Electron or Tauri to create a desktop application
 - Edge
 
 Note: PDF viewing relies on the browser's built-in PDF viewer.
-
-## GitHub Pages Deployment
-
-### Quick Setup
-
-1. **Create GitHub Repository**:
-   - Go to https://github.com/new
-   - Repository name: `paper-calc-viewer`
-   - Description: `A React-based web application for viewing PDF papers alongside interactive HTML calculators`
-   - Set to Public
-   - Click "Create repository"
-
-2. **Push Code to GitHub**:
-   ```bash
-   git remote add origin https://github.com/HousamKak/paper-calc-viewer.git
-   git branch -M main
-   git push -u origin main
-   ```
-
-3. **Enable GitHub Pages**:
-   - Go to your repository on GitHub
-   - Click "Settings" tab
-   - Scroll to "Pages" in the left sidebar
-   - Under "Source", select "GitHub Actions"
-   - The app will automatically deploy when you push changes
-
-4. **Access Your App**:
-   - Your app will be available at: `https://HousamKak.github.io/paper-calc-viewer/`
-   - First deployment takes a few minutes
-
-### Manual Deployment
-
-If you prefer manual deployment:
-```bash
-npm install
-npm run deploy
-```
 
 ## License
 
@@ -238,11 +222,12 @@ This project is open source and available under the MIT License.
 - Check browser console for security errors
 - Try a different PDF file
 
-### Calculator Not Loading  
+### HTML Content Not Loading
 - Verify the HTML file is valid
 - Check for JavaScript errors in browser console
 - Ensure all resources are either inline or use absolute URLs
 - Test the HTML file independently in a browser
+- Check for iframe restrictions or Content-Security-Policy issues
 
 ### Bundle Issues
 - Verify the `.texhtml` file is not corrupted
