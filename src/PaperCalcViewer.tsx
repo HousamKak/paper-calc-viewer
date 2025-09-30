@@ -51,6 +51,8 @@ export default function PaperHtmlViewer() {
   const [isDragging, setIsDragging] = useState(false);
   const [showToolbar, setShowToolbar] = useLocalStorage<boolean>("pcv.showToolbar", true);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+  const [appError, setAppError] = useState(false);
 
   // Build iframe props for the calculator pane
   const calcIframeProps = useMemo(() => {
@@ -65,6 +67,7 @@ export default function PaperHtmlViewer() {
     const url = URL.createObjectURL(file);
     setPdfUrl(url);
     setPdfFile(file);
+    setPdfError(false);
   };
 
   const onClearPdf = () => {
@@ -74,6 +77,7 @@ export default function PaperHtmlViewer() {
     setPdfUrl(null);
     setPdfFile(null);
     setPdfZoom(100);
+    setPdfError(false);
   };
 
   const onClearHtml = () => {
@@ -83,6 +87,7 @@ export default function PaperHtmlViewer() {
     setAppUrl(null);
     setAppSrcDoc(null);
     setAppFile(null);
+    setAppError(false);
   };
 
   const onPickHtml = (file: File) => {
@@ -94,6 +99,7 @@ export default function PaperHtmlViewer() {
     const url = URL.createObjectURL(file);
     setAppUrl(url);
     setAppSrcDoc(null);
+    setAppError(false);
   };
 
   const onDrop = (e: React.DragEvent) => {
@@ -334,6 +340,36 @@ export default function PaperHtmlViewer() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
+  // --- Check for invalid URLs on mount (e.g., after page refresh) ---
+  useEffect(() => {
+    // Check if PDF URL is a blob URL that might be invalid
+    if (pdfUrl && pdfUrl.startsWith("blob:")) {
+      // Try to fetch the blob to see if it's still valid
+      fetch(pdfUrl)
+        .then(response => {
+          if (!response.ok) {
+            setPdfError(true);
+          }
+        })
+        .catch(() => {
+          setPdfError(true);
+        });
+    }
+
+    // Check if App URL is a blob URL that might be invalid
+    if (appUrl && appUrl.startsWith("blob:")) {
+      fetch(appUrl)
+        .then(response => {
+          if (!response.ok) {
+            setAppError(true);
+          }
+        })
+        .catch(() => {
+          setAppError(true);
+        });
+    }
+  }, []); // Only run on mount
+
   // UI bits
   const filePdfRef = useRef<HTMLInputElement>(null);
   const fileHtmlRef = useRef<HTMLInputElement>(null);
@@ -358,43 +394,47 @@ export default function PaperHtmlViewer() {
 
       {/* File Operations - Compact */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button className={classNames(
-          "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
-          theme === 'dark'
-            ? "border-gray-700 hover:bg-gray-800 hover:border-blue-500/50"
-            : "border-gray-200 hover:bg-blue-50 hover:border-blue-400"
-        )} onClick={() => filePdfRef.current?.click()} title="Load PDF">
-          📄
-        </button>
-        <input ref={filePdfRef} className="hidden" type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && onPickPdf(e.target.files[0])} />
+        <div className="flex items-center gap-0.5">
+          <button className={classNames(
+            "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
+            theme === 'dark'
+              ? "border-gray-700 hover:bg-gray-800 hover:border-blue-500/50"
+              : "border-gray-200 hover:bg-blue-50 hover:border-blue-400"
+          )} onClick={() => filePdfRef.current?.click()} title="Load PDF">
+            📄
+          </button>
+          <input ref={filePdfRef} className="hidden" type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && onPickPdf(e.target.files[0])} />
 
-        {pdfFile && (
           <button className={classNames(
             "px-1 py-0.5 text-xs rounded-md transition-all hover:scale-110",
-            theme === 'dark' ? "text-red-400 hover:bg-red-900/30" : "text-red-500 hover:bg-red-50"
-          )} onClick={onClearPdf} title="Clear PDF">
+            pdfFile
+              ? theme === 'dark' ? "text-red-400 hover:bg-red-900/30" : "text-red-500 hover:bg-red-50"
+              : theme === 'dark' ? "text-gray-600 hover:bg-gray-800" : "text-gray-400 hover:bg-gray-100"
+          )} onClick={onClearPdf} title="Clear PDF" disabled={!pdfFile}>
             ×
           </button>
-        )}
+        </div>
 
-        <button className={classNames(
-          "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
-          theme === 'dark'
-            ? "border-gray-700 hover:bg-gray-800 hover:border-green-500/50"
-            : "border-gray-200 hover:bg-green-50 hover:border-green-400"
-        )} onClick={() => fileHtmlRef.current?.click()} title="Load HTML">
-          🌐
-        </button>
-        <input ref={fileHtmlRef} className="hidden" type="file" accept="text/html,.html" onChange={(e) => e.target.files?.[0] && onPickHtml(e.target.files[0])} />
+        <div className="flex items-center gap-0.5">
+          <button className={classNames(
+            "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
+            theme === 'dark'
+              ? "border-gray-700 hover:bg-gray-800 hover:border-green-500/50"
+              : "border-gray-200 hover:bg-green-50 hover:border-green-400"
+          )} onClick={() => fileHtmlRef.current?.click()} title="Load HTML">
+            🌐
+          </button>
+          <input ref={fileHtmlRef} className="hidden" type="file" accept="text/html,.html" onChange={(e) => e.target.files?.[0] && onPickHtml(e.target.files[0])} />
 
-        {appFile && (
           <button className={classNames(
             "px-1 py-0.5 text-xs rounded-md transition-all hover:scale-110",
-            theme === 'dark' ? "text-red-400 hover:bg-red-900/30" : "text-red-500 hover:bg-red-50"
-          )} onClick={onClearHtml} title="Clear HTML">
+            appFile || appUrl || appSrcDoc
+              ? theme === 'dark' ? "text-red-400 hover:bg-red-900/30" : "text-red-500 hover:bg-red-50"
+              : theme === 'dark' ? "text-gray-600 hover:bg-gray-800" : "text-gray-400 hover:bg-gray-100"
+          )} onClick={onClearHtml} title="Clear HTML" disabled={!appFile && !appUrl && !appSrcDoc}>
             ×
           </button>
-        )}
+        </div>
       </div>
 
       <div className={classNames("mx-1 h-4 w-px flex-shrink-0", theme === 'dark' ? "bg-gray-700" : "bg-gray-300")} />
@@ -574,12 +614,22 @@ export default function PaperHtmlViewer() {
   const PaperPane = () => (
     <Pane>
       {pdfUrl ? (
-        // Use the browser PDF viewer with zoom
-        <iframe
-          title="paper"
-          src={`${pdfUrl}#view=FitH&zoom=${pdfZoom}`}
-          className="w-full h-full"
-        />
+        pdfError ? (
+          <ErrorHint 
+            kind="PDF" 
+            onReload={() => filePdfRef.current?.click()} 
+            onClear={onClearPdf}
+            message="PDF failed to load. This might happen after a page refresh."
+          />
+        ) : (
+          // Use the browser PDF viewer with zoom
+          <iframe
+            title="paper"
+            src={`${pdfUrl}#view=FitH&zoom=${pdfZoom}`}
+            className="w-full h-full"
+            onError={() => setPdfError(true)}
+          />
+        )
       ) : (
         <DropHint kind="PDF" onClick={() => filePdfRef.current?.click()} />
       )}
@@ -589,7 +639,21 @@ export default function PaperHtmlViewer() {
   const AppPane = () => (
     <Pane>
       {appUrl || appSrcDoc ? (
-        <iframe title="calculator" className="w-full h-full" {...calcIframeProps} />
+        appError ? (
+          <ErrorHint 
+            kind="HTML" 
+            onReload={() => fileHtmlRef.current?.click()} 
+            onClear={onClearHtml}
+            message="HTML failed to load. This might happen after a page refresh."
+          />
+        ) : (
+          <iframe 
+            title="calculator" 
+            className="w-full h-full" 
+            {...calcIframeProps}
+            onError={() => setAppError(true)}
+          />
+        )
       ) : (
         <DropHint kind="HTML" onClick={() => fileHtmlRef.current?.click()} />
       )}
@@ -846,6 +910,42 @@ function DropHint({ kind, onClick }: { kind: "PDF" | "HTML"; onClick: () => void
         <div className="text-4xl mb-2 opacity-50">{kind === "PDF" ? "📄" : "🌐"}</div>
         <div className="text-sm font-medium mb-1">No {kind} loaded</div>
         <div className="text-xs opacity-70">Click here or drop a {kind} file</div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorHint({ 
+  kind, 
+  onReload, 
+  onClear, 
+  message 
+}: { 
+  kind: "PDF" | "HTML"; 
+  onReload: () => void; 
+  onClear: () => void;
+  message: string;
+}) {
+  return (
+    <div className="h-full w-full flex items-center justify-center bg-red-50 dark:bg-red-900/20">
+      <div className="text-center text-red-600 dark:text-red-400 max-w-md mx-4">
+        <div className="text-4xl mb-3 opacity-70">⚠️</div>
+        <div className="text-sm font-medium mb-2">{kind} Error</div>
+        <div className="text-xs opacity-80 mb-4">{message}</div>
+        <div className="flex gap-2 justify-center">
+          <button
+            className="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+            onClick={onReload}
+          >
+            Load New {kind}
+          </button>
+          <button
+            className="px-3 py-1.5 text-xs rounded-md border border-red-300 text-red-600 dark:border-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            onClick={onClear}
+          >
+            Clear
+          </button>
+        </div>
       </div>
     </div>
   );
