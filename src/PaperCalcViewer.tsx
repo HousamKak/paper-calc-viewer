@@ -50,6 +50,7 @@ export default function PaperHtmlViewer() {
   const [pdfZoom, setPdfZoom] = useLocalStorage<number>("pcv.pdfZoom", 100);
   const [isDragging, setIsDragging] = useState(false);
   const [showToolbar, setShowToolbar] = useLocalStorage<boolean>("pcv.showToolbar", true);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Build iframe props for the calculator pane
   const calcIframeProps = useMemo(() => {
@@ -258,6 +259,12 @@ export default function PaperHtmlViewer() {
   // --- Keyboard shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowKeyboardShortcuts(false);
+        return;
+      }
+      
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
           case '1':
@@ -425,7 +432,7 @@ export default function PaperHtmlViewer() {
               ? "bg-blue-600 text-white shadow-md"
               : "bg-blue-500 text-white shadow-md"
             : "hover:bg-gray-200 dark:hover:bg-gray-700"
-        )} onClick={() => setView("split")} title="Split View (⌘1)">
+        )} onClick={() => setView("split")} title="Split View (Ctrl+1 / ⌘1)">
           ⚏
         </button>
         <button className={classNames(
@@ -435,7 +442,7 @@ export default function PaperHtmlViewer() {
               ? "bg-blue-600 text-white shadow-md"
               : "bg-blue-500 text-white shadow-md"
             : "hover:bg-gray-200 dark:hover:bg-gray-700"
-        )} onClick={() => setView("paper")} title="Paper Only (⌘2)">
+        )} onClick={() => setView("paper")} title="Paper Only (Ctrl+2 / ⌘2)">
           📄
         </button>
         <button className={classNames(
@@ -445,7 +452,7 @@ export default function PaperHtmlViewer() {
               ? "bg-blue-600 text-white shadow-md"
               : "bg-blue-500 text-white shadow-md"
             : "hover:bg-gray-200 dark:hover:bg-gray-700"
-        )} onClick={() => setView("app")} title="HTML Only (⌘3)">
+        )} onClick={() => setView("app")} title="HTML Only (Ctrl+3 / ⌘3)">
           🌐
         </button>
       </div>
@@ -526,7 +533,7 @@ export default function PaperHtmlViewer() {
               ? "bg-indigo-600 text-white shadow-md"
               : "bg-indigo-500 text-white shadow-md"
             : "hover:bg-gray-200 dark:hover:bg-gray-700"
-        )} onClick={() => setSwap((s) => !s)} title="Swap Panes (⌘S)">
+        )} onClick={() => setSwap((s) => !s)} title="Swap Panes (Ctrl+S / ⌘S)">
           ⇄
         </button>
       </div>
@@ -536,7 +543,14 @@ export default function PaperHtmlViewer() {
         <button className={classNames(
           "px-1.5 py-0.5 text-sm rounded-md transition-all hover:scale-110",
           theme === 'dark' ? "hover:bg-gray-800" : "hover:bg-gray-100"
-        )} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} title="Toggle Theme (⌘D)">
+        )} onClick={() => setShowKeyboardShortcuts(true)} title="Keyboard Shortcuts">
+          ℹ️
+        </button>
+
+        <button className={classNames(
+          "px-1.5 py-0.5 text-sm rounded-md transition-all hover:scale-110",
+          theme === 'dark' ? "hover:bg-gray-800" : "hover:bg-gray-100"
+        )} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} title="Toggle Theme (Ctrl+D / ⌘D)">
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
 
@@ -550,7 +564,7 @@ export default function PaperHtmlViewer() {
         <button className={classNames(
           "px-1.5 py-0.5 text-xs rounded-md transition-all hover:scale-110",
           theme === 'dark' ? "text-gray-500 hover:bg-gray-800" : "text-gray-400 hover:bg-gray-100"
-        )} onClick={() => setShowToolbar(false)} title="Hide Toolbar (⌘H)">
+        )} onClick={() => setShowToolbar(false)} title="Hide Toolbar (Ctrl+H / ⌘H)">
           ×
         </button>
       </div>
@@ -599,7 +613,7 @@ export default function PaperHtmlViewer() {
               : "bg-white/90 border-gray-300 text-gray-700 hover:bg-gray-50"
           )}
           onClick={() => setShowToolbar(true)}
-          title="Show Toolbar (⌘H)"
+          title="Show Toolbar (Ctrl+H / ⌘H)"
         >
           ☰
         </button>
@@ -681,6 +695,141 @@ export default function PaperHtmlViewer() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showKeyboardShortcuts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowKeyboardShortcuts(false)}>
+          <div 
+            className={classNames(
+              "relative max-w-md w-full mx-4 p-6 rounded-xl shadow-2xl border",
+              theme === 'dark' 
+                ? "bg-gray-900 border-gray-700 text-white" 
+                : "bg-white border-gray-200"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Keyboard Shortcuts
+              </h3>
+              <button 
+                className={classNames(
+                  "px-2 py-1 text-sm rounded-md transition-all hover:scale-110",
+                  theme === 'dark' ? "hover:bg-gray-800" : "hover:bg-gray-100"
+                )}
+                onClick={() => setShowKeyboardShortcuts(false)}
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span>Split View</span>
+                <div className="flex gap-1">
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>Ctrl+1</kbd>
+                  <span className="text-xs opacity-50">/</span>
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>⌘1</kbd>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Paper Only</span>
+                <div className="flex gap-1">
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>Ctrl+2</kbd>
+                  <span className="text-xs opacity-50">/</span>
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>⌘2</kbd>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>HTML Only</span>
+                <div className="flex gap-1">
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>Ctrl+3</kbd>
+                  <span className="text-xs opacity-50">/</span>
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>⌘3</kbd>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Toggle Theme</span>
+                <div className="flex gap-1">
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>Ctrl+D</kbd>
+                  <span className="text-xs opacity-50">/</span>
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>⌘D</kbd>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Fullscreen</span>
+                <kbd className={classNames(
+                  "px-2 py-1 text-xs font-mono rounded border",
+                  theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                )}>F11</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Swap Panes</span>
+                <div className="flex gap-1">
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>Ctrl+S</kbd>
+                  <span className="text-xs opacity-50">/</span>
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>⌘S</kbd>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Hide/Show Toolbar</span>
+                <div className="flex gap-1">
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>Ctrl+H</kbd>
+                  <span className="text-xs opacity-50">/</span>
+                  <kbd className={classNames(
+                    "px-2 py-1 text-xs font-mono rounded border",
+                    theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+                  )}>⌘H</kbd>
+                </div>
+              </div>
+            </div>
+            
+            <div className={classNames(
+              "mt-4 pt-4 border-t text-xs text-center opacity-70",
+              theme === 'dark' ? "border-gray-700" : "border-gray-200"
+            )}>
+              Press <kbd className={classNames(
+                "px-1.5 py-0.5 font-mono rounded border mx-1",
+                theme === 'dark' ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
+              )}>Esc</kbd> to close
+            </div>
+          </div>
         </div>
       )}
     </div>
