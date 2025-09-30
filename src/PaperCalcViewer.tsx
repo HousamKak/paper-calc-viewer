@@ -216,13 +216,13 @@ export default function PaperHtmlViewer() {
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
-    
+
     const container = document.querySelector('.split-container') as HTMLElement;
     if (!container) return;
-    
+
     const rect = container.getBoundingClientRect();
     let newSplit;
-    
+
     if (orientation === 'horizontal') {
       const relativeX = e.clientX - rect.left;
       newSplit = (relativeX / rect.width) * 100;
@@ -230,8 +230,8 @@ export default function PaperHtmlViewer() {
       const relativeY = e.clientY - rect.top;
       newSplit = (relativeY / rect.height) * 100;
     }
-    
-    newSplit = Math.max(15, Math.min(85, newSplit));
+
+    newSplit = Math.round(Math.max(15, Math.min(85, newSplit)));
     setSplitPct(newSplit);
   }, [isDragging, orientation]);
 
@@ -345,206 +345,219 @@ export default function PaperHtmlViewer() {
 
   const Toolbar = () => (
     <div className={classNames(
-      "flex flex-wrap items-center gap-2 p-3 border-b sticky top-0 z-10 transition-colors",
-      theme === 'dark' 
-        ? "bg-gradient-to-b from-gray-900 to-gray-800 border-gray-600 text-white" 
-        : "bg-gradient-to-b from-white to-gray-50 border-gray-200"
+      "flex items-center gap-2 px-3 py-2 border-b sticky top-0 z-10 transition-colors backdrop-blur-sm overflow-x-auto",
+      theme === 'dark'
+        ? "bg-gray-900/95 border-gray-700/50 text-white shadow-lg"
+        : "bg-white/95 border-gray-200/50 shadow-sm"
     )}>
-      <div className="text-xl font-semibold mr-2">Paper + HTML Viewer</div>
+      <div className="text-base font-bold mr-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap flex-shrink-0 min-w-[60px]">
+        Paper+
+      </div>
 
-      {/* File Operations */}
-      <div className="flex items-center gap-2">
+      {/* File Operations - Compact */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => filePdfRef.current?.click()}>
-          📄 Load PDF
+          "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
+          theme === 'dark'
+            ? "border-gray-700 hover:bg-gray-800 hover:border-blue-500/50"
+            : "border-gray-200 hover:bg-blue-50 hover:border-blue-400"
+        )} onClick={() => filePdfRef.current?.click()} title="Load PDF">
+          📄
         </button>
         <input ref={filePdfRef} className="hidden" type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && onPickPdf(e.target.files[0])} />
 
         {pdfFile && (
           <button className={classNames(
-            "px-2 py-1.5 rounded-xl border transition-colors text-red-600",
-            theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+            "px-1 py-0.5 text-xs rounded-md transition-all hover:scale-110",
+            theme === 'dark' ? "text-red-400 hover:bg-red-900/30" : "text-red-500 hover:bg-red-50"
           )} onClick={onClearPdf} title="Clear PDF">
-            ❌
+            ×
           </button>
         )}
 
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => fileHtmlRef.current?.click()}>
-          🌐 Load HTML
+          "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
+          theme === 'dark'
+            ? "border-gray-700 hover:bg-gray-800 hover:border-green-500/50"
+            : "border-gray-200 hover:bg-green-50 hover:border-green-400"
+        )} onClick={() => fileHtmlRef.current?.click()} title="Load HTML">
+          🌐
         </button>
         <input ref={fileHtmlRef} className="hidden" type="file" accept="text/html,.html" onChange={(e) => e.target.files?.[0] && onPickHtml(e.target.files[0])} />
 
         {appFile && (
           <button className={classNames(
-            "px-2 py-1.5 rounded-xl border transition-colors text-red-600",
-            theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+            "px-1 py-0.5 text-xs rounded-md transition-all hover:scale-110",
+            theme === 'dark' ? "text-red-400 hover:bg-red-900/30" : "text-red-500 hover:bg-red-50"
           )} onClick={onClearHtml} title="Clear HTML">
-            ❌
+            ×
           </button>
         )}
       </div>
 
-      <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
+      <div className={classNames("mx-1 h-4 w-px flex-shrink-0", theme === 'dark' ? "bg-gray-700" : "bg-gray-300")} />
 
-      {/* Bundle Operations */}
-      <div className="flex items-center gap-2">
+      {/* Bundle Operations - Compact */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => fileBundleRef.current?.click()}>
-          📦 Open Bundle
+          "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
+          theme === 'dark'
+            ? "border-gray-700 hover:bg-gray-800 hover:border-purple-500/50"
+            : "border-gray-200 hover:bg-purple-50 hover:border-purple-400"
+        )} onClick={() => fileBundleRef.current?.click()} title="Open Bundle">
+          📦
         </button>
         <input ref={fileBundleRef} className="hidden" type="file" accept=".texhtml,.zip" onChange={(e) => e.target.files?.[0] && onOpenBundle(e.target.files[0])} />
 
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={onSaveBundle}>
-          💾 Save Bundle
+          "px-2 py-0.5 text-xs rounded-md border transition-all hover:scale-105",
+          theme === 'dark'
+            ? "border-gray-700 hover:bg-gray-800 hover:border-amber-500/50"
+            : "border-gray-200 hover:bg-amber-50 hover:border-amber-400"
+        )} onClick={onSaveBundle} title="Save Bundle">
+          💾
         </button>
       </div>
 
-      <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
+      <div className={classNames("mx-1 h-4 w-px flex-shrink-0", theme === 'dark' ? "bg-gray-700" : "bg-gray-300")} />
 
-      {/* View Controls */}
-      <div className="flex items-center gap-1">
+      {/* View Controls - Compact Pills */}
+      <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 flex-shrink-0">
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          view === "split" 
-            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
-            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => setView("split")}>
-          Split <span className="text-xs opacity-60">(⌘1)</span>
+          "px-2 py-0.5 text-xs rounded-md transition-all",
+          view === "split"
+            ? theme === 'dark'
+              ? "bg-blue-600 text-white shadow-md"
+              : "bg-blue-500 text-white shadow-md"
+            : "hover:bg-gray-200 dark:hover:bg-gray-700"
+        )} onClick={() => setView("split")} title="Split View (⌘1)">
+          ⚏
         </button>
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          view === "paper" 
-            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
-            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => setView("paper")}>
-          Paper <span className="text-xs opacity-60">(⌘2)</span>
+          "px-2 py-0.5 text-xs rounded-md transition-all",
+          view === "paper"
+            ? theme === 'dark'
+              ? "bg-blue-600 text-white shadow-md"
+              : "bg-blue-500 text-white shadow-md"
+            : "hover:bg-gray-200 dark:hover:bg-gray-700"
+        )} onClick={() => setView("paper")} title="Paper Only (⌘2)">
+          📄
         </button>
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          view === "app" 
-            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
-            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => setView("app")}>
-          HTML <span className="text-xs opacity-60">(⌘3)</span>
+          "px-2 py-0.5 text-xs rounded-md transition-all",
+          view === "app"
+            ? theme === 'dark'
+              ? "bg-blue-600 text-white shadow-md"
+              : "bg-blue-500 text-white shadow-md"
+            : "hover:bg-gray-200 dark:hover:bg-gray-700"
+        )} onClick={() => setView("app")} title="HTML Only (⌘3)">
+          🌐
         </button>
       </div>
 
-      <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
-
-      {/* PDF Zoom Controls */}
+      {/* PDF Zoom - Compact */}
       {pdfUrl && (view === "paper" || view === "split") && (
         <>
-          <div className="flex items-center gap-2">
-            <label className={classNames("text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
-              Zoom:
-            </label>
+          <div className={classNames("mx-1 h-4 w-px flex-shrink-0", theme === 'dark' ? "bg-gray-700" : "bg-gray-300")} />
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button className={classNames(
-              "px-2 py-1 rounded border transition-colors",
-              theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-            )} onClick={() => setPdfZoom(Math.max(25, pdfZoom - 25))}>
+              "px-1.5 py-0.5 text-xs rounded-md border transition-all hover:scale-110",
+              theme === 'dark' ? "border-gray-700 hover:bg-gray-800" : "border-gray-300 hover:bg-gray-100"
+            )} onClick={() => setPdfZoom(Math.max(25, pdfZoom - 25))} title="Zoom Out">
               −
             </button>
-            <span className={classNames("w-12 text-center text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
+            <span className={classNames("text-[10px] w-8 text-center font-mono", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
               {pdfZoom}%
             </span>
             <button className={classNames(
-              "px-2 py-1 rounded border transition-colors",
-              theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-            )} onClick={() => setPdfZoom(Math.min(200, pdfZoom + 25))}>
+              "px-1.5 py-0.5 text-xs rounded-md border transition-all hover:scale-110",
+              theme === 'dark' ? "border-gray-700 hover:bg-gray-800" : "border-gray-300 hover:bg-gray-100"
+            )} onClick={() => setPdfZoom(Math.min(200, pdfZoom + 25))} title="Zoom In">
               +
             </button>
           </div>
-          <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
         </>
       )}
 
-      {/* Split Controls */}
+      {/* Split Controls - Minimalist */}
       {view === "split" && (
         <>
-          <div className="flex items-center gap-2">
-            <label className={classNames("text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
-              Split:
-            </label>
-            <input 
-              type="range" 
-              min={15} 
-              max={85} 
-              value={splitPct} 
+          <div className={classNames("mx-1 h-4 w-px flex-shrink-0", theme === 'dark' ? "bg-gray-700" : "bg-gray-300")} />
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <input
+              type="range"
+              min={15}
+              max={85}
+              value={splitPct}
               onChange={(e) => setSplitPct(parseInt(e.target.value))}
-              className="w-20"
+              className="w-16 h-1"
+              title={`Split: ${splitPct}%`}
             />
-            <span className={classNames("w-10 text-center text-sm", theme === 'dark' ? "text-gray-300" : "text-gray-600")}>
+            <span className={classNames("text-[10px] w-7 text-center font-mono", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
               {splitPct}%
             </span>
           </div>
-          <div className={classNames("mx-2 h-6 w-px", theme === 'dark' ? "bg-gray-600" : "bg-gray-200")} />
         </>
       )}
 
-      {/* Layout Controls */}
-      <div className="flex items-center gap-1">
+      <div className={classNames("mx-1 h-4 w-px flex-shrink-0", theme === 'dark' ? "bg-gray-700" : "bg-gray-300")} />
+
+      {/* Layout Controls - Icon Only */}
+      <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 flex-shrink-0">
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          orientation === "horizontal" 
-            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
-            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => setOrientation("horizontal")}>
-          ↔️
+          "px-1.5 py-0.5 text-xs rounded-md transition-all",
+          orientation === "horizontal"
+            ? theme === 'dark'
+              ? "bg-purple-600 text-white shadow-md"
+              : "bg-purple-500 text-white shadow-md"
+            : "hover:bg-gray-200 dark:hover:bg-gray-700"
+        )} onClick={() => setOrientation("horizontal")} title="Horizontal Split">
+          ↔
         </button>
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          orientation === "vertical" 
-            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
-            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => setOrientation("vertical")}>
-          ↕️
+          "px-1.5 py-0.5 text-xs rounded-md transition-all",
+          orientation === "vertical"
+            ? theme === 'dark'
+              ? "bg-purple-600 text-white shadow-md"
+              : "bg-purple-500 text-white shadow-md"
+            : "hover:bg-gray-200 dark:hover:bg-gray-700"
+        )} onClick={() => setOrientation("vertical")} title="Vertical Split">
+          ↕
         </button>
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          swap 
-            ? theme === 'dark' ? "bg-gray-700 font-semibold border-gray-500" : "bg-gray-100 font-semibold border-gray-400"
-            : theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
-        )} onClick={() => setSwap((s) => !s)}>
-          🔄 <span className="text-xs opacity-60">(⌘S)</span>
+          "px-1.5 py-0.5 text-xs rounded-md transition-all hover:scale-110",
+          swap
+            ? theme === 'dark'
+              ? "bg-indigo-600 text-white shadow-md"
+              : "bg-indigo-500 text-white shadow-md"
+            : "hover:bg-gray-200 dark:hover:bg-gray-700"
+        )} onClick={() => setSwap((s) => !s)} title="Swap Panes (⌘S)">
+          ⇄
         </button>
       </div>
 
-      {/* Theme and Tools */}
-      <div className="ml-auto flex items-center gap-2">
+      {/* Right Side Actions */}
+      <div className="ml-auto flex items-center gap-1 flex-shrink-0">
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+          "px-1.5 py-0.5 text-sm rounded-md transition-all hover:scale-110",
+          theme === 'dark' ? "hover:bg-gray-800" : "hover:bg-gray-100"
         )} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} title="Toggle Theme (⌘D)">
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
 
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+          "px-1.5 py-0.5 text-sm rounded-md transition-all hover:scale-110",
+          theme === 'dark' ? "hover:bg-gray-800" : "hover:bg-gray-100"
         )} onClick={toggleFullscreen} title="Fullscreen (F11)">
-          {isFullscreen ? '🪟' : '⛶'}
+          {isFullscreen ? '◧' : '⛶'}
         </button>
 
         <button className={classNames(
-          "px-3 py-1.5 rounded-xl border transition-colors",
-          theme === 'dark' ? "border-gray-600 hover:bg-gray-700" : "border-gray-300 hover:bg-gray-50"
+          "px-1.5 py-0.5 text-xs rounded-md transition-all hover:scale-110",
+          theme === 'dark' ? "text-gray-500 hover:bg-gray-800" : "text-gray-400 hover:bg-gray-100"
         )} onClick={() => setShowToolbar(false)} title="Hide Toolbar (⌘H)">
-          ❌
+          ×
         </button>
-
-        <div className={classNames("text-sm", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
-          Drop PDF + HTML anywhere
-        </div>
       </div>
     </div>
   );
@@ -585,15 +598,15 @@ export default function PaperHtmlViewer() {
       {!showToolbar && (
         <button
           className={classNames(
-            "fixed top-4 left-4 z-50 px-3 py-2 rounded-xl border transition-all duration-300 shadow-lg",
-            theme === 'dark' 
-              ? "bg-gray-800 border-gray-600 text-white hover:bg-gray-700" 
-              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+            "fixed top-2 left-2 z-50 px-2 py-1 text-xs rounded-lg border transition-all duration-300 shadow-lg hover:scale-110 backdrop-blur-sm",
+            theme === 'dark'
+              ? "bg-gray-900/90 border-gray-700 text-white hover:bg-gray-800"
+              : "bg-white/90 border-gray-300 text-gray-700 hover:bg-gray-50"
           )}
           onClick={() => setShowToolbar(true)}
           title="Show Toolbar (⌘H)"
         >
-          ⚙️
+          ☰
         </button>
       )}
 
@@ -674,13 +687,10 @@ export default function PaperHtmlViewer() {
 function DropHint({ kind }: { kind: "PDF" | "HTML" }) {
   return (
     <div className="h-full w-full flex items-center justify-center">
-      <div className="text-center text-gray-500 dark:text-gray-400">
-        <div className="text-6xl mb-4">{kind === "PDF" ? "📄" : "🌐"}</div>
-        <div className="text-lg font-medium mb-1">No {kind} loaded</div>
-        <div className="text-sm">Use the toolbar or drop a {kind} file here</div>
-        <div className="text-xs mt-2 opacity-60">
-          {kind === "PDF" ? "Supports: .pdf files" : "Supports: .html files"}
-        </div>
+      <div className="text-center text-gray-400 dark:text-gray-500">
+        <div className="text-4xl mb-2 opacity-50">{kind === "PDF" ? "📄" : "🌐"}</div>
+        <div className="text-sm font-medium mb-1">No {kind} loaded</div>
+        <div className="text-xs opacity-70">Drop a {kind} file or use toolbar</div>
       </div>
     </div>
   );
