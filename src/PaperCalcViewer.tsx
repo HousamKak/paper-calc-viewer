@@ -561,13 +561,13 @@ export default function PaperHtmlViewer() {
     <Pane>
       {pdfUrl ? (
         // Use the browser PDF viewer with zoom
-        <iframe 
-          title="paper" 
-          src={`${pdfUrl}#view=FitH&zoom=${pdfZoom}`} 
-          className="w-full h-full" 
+        <iframe
+          title="paper"
+          src={`${pdfUrl}#view=FitH&zoom=${pdfZoom}`}
+          className="w-full h-full"
         />
       ) : (
-        <DropHint kind="PDF" />
+        <DropHint kind="PDF" onClick={() => filePdfRef.current?.click()} />
       )}
     </Pane>
   );
@@ -577,7 +577,7 @@ export default function PaperHtmlViewer() {
       {appUrl || appSrcDoc ? (
         <iframe title="calculator" className="w-full h-full" {...calcIframeProps} />
       ) : (
-        <DropHint kind="HTML" />
+        <DropHint kind="HTML" onClick={() => fileHtmlRef.current?.click()} />
       )}
     </Pane>
   );
@@ -687,13 +687,16 @@ export default function PaperHtmlViewer() {
   );
 }
 
-function DropHint({ kind }: { kind: "PDF" | "HTML" }) {
+function DropHint({ kind, onClick }: { kind: "PDF" | "HTML"; onClick: () => void }) {
   return (
-    <div className="h-full w-full flex items-center justify-center">
-      <div className="text-center text-gray-400 dark:text-gray-500">
+    <div
+      className="h-full w-full flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      onClick={onClick}
+    >
+      <div className="text-center text-gray-400 dark:text-gray-500 pointer-events-none">
         <div className="text-4xl mb-2 opacity-50">{kind === "PDF" ? "📄" : "🌐"}</div>
         <div className="text-sm font-medium mb-1">No {kind} loaded</div>
-        <div className="text-xs opacity-70">Drop a {kind} file or use toolbar</div>
+        <div className="text-xs opacity-70">Click here or drop a {kind} file</div>
       </div>
     </div>
   );
