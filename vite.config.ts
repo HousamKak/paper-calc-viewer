@@ -7,5 +7,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['fflate']
   },
-  base: '/paper-calc-viewer/'
+  base: '/paper-plus/'
 })
