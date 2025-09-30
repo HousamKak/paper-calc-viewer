@@ -333,12 +333,7 @@ export default function PaperHtmlViewer() {
   const fileBundleRef = useRef<HTMLInputElement>(null);
 
   const Pane = ({ children }: { children: React.ReactNode }) => (
-    <div className={classNames(
-      "w-full h-full rounded-2xl overflow-hidden shadow-sm border transition-colors",
-      theme === 'dark' 
-        ? "bg-gray-800/50 border-gray-600" 
-        : "bg-white/50 border-gray-200"
-    )}>
+    <div className="w-full h-full overflow-hidden">
       {children}
     </div>
   );
@@ -612,67 +607,75 @@ export default function PaperHtmlViewer() {
 
       {/* Work area */}
       {view === "paper" && (
-        <div className="flex-1 p-3">
+        <div className="flex-1">
           <div className="w-full h-full"><PaperPane /></div>
         </div>
       )}
 
       {view === "app" && (
-        <div className="flex-1 p-3">
+        <div className="flex-1">
           <div className="w-full h-full"><AppPane /></div>
         </div>
       )}
 
       {view === "split" && (
-        <div className={classNames("flex-1 p-3 split-container", orientation === "horizontal" ? "" : "")}>
+        <div className={classNames("flex-1 split-container", orientation === "horizontal" ? "" : "")}>
           {orientation === "horizontal" ? (
-            <div className="w-full h-full flex gap-3 relative">
+            <div className="w-full h-full flex relative">
               <div className="h-full" style={{ width: `${splitPct}%` }}>
                 {swap ? <AppPane /> : <PaperPane />}
               </div>
-              
-              {/* Draggable divider */}
-              <div 
+
+              {/* Draggable divider - ultra thin Apple style */}
+              <div
                 className={classNames(
-                  "w-1 h-full cursor-col-resize flex items-center justify-center group relative",
-                  theme === 'dark' ? "hover:bg-gray-600" : "hover:bg-gray-300"
+                  "w-px h-full cursor-col-resize flex items-center justify-center group relative",
+                  theme === 'dark' ? "bg-gray-700/50" : "bg-gray-300/50"
                 )}
                 onMouseDown={handleMouseDown}
               >
+                {/* Invisible hit area for easier grabbing */}
+                <div className="absolute inset-y-0 -inset-x-2" />
+                {/* Visible handle on hover */}
                 <div className={classNames(
-                  "w-1 h-16 rounded-full transition-all",
-                  isDragging 
-                    ? theme === 'dark' ? "bg-blue-400" : "bg-blue-500"
-                    : theme === 'dark' ? "bg-gray-600 group-hover:bg-gray-500" : "bg-gray-300 group-hover:bg-gray-400"
+                  "absolute w-1 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                  isDragging
+                    ? "opacity-100"
+                    : "",
+                  theme === 'dark' ? "bg-blue-500" : "bg-blue-400"
                 )} />
               </div>
-              
+
               <div className="h-full flex-1">
                 {swap ? <PaperPane /> : <AppPane />}
               </div>
             </div>
           ) : (
-            <div className="w-full h-full flex flex-col gap-3 relative">
+            <div className="w-full h-full flex flex-col relative">
               <div className="w-full" style={{ height: `${splitPct}%` }}>
                 {swap ? <AppPane /> : <PaperPane />}
               </div>
-              
-              {/* Draggable divider */}
-              <div 
+
+              {/* Draggable divider - ultra thin Apple style */}
+              <div
                 className={classNames(
-                  "w-full h-1 cursor-row-resize flex items-center justify-center group relative",
-                  theme === 'dark' ? "hover:bg-gray-600" : "hover:bg-gray-300"
+                  "w-full h-px cursor-row-resize flex items-center justify-center group relative",
+                  theme === 'dark' ? "bg-gray-700/50" : "bg-gray-300/50"
                 )}
                 onMouseDown={handleMouseDown}
               >
+                {/* Invisible hit area for easier grabbing */}
+                <div className="absolute inset-x-0 -inset-y-2" />
+                {/* Visible handle on hover */}
                 <div className={classNames(
-                  "w-16 h-1 rounded-full transition-all",
-                  isDragging 
-                    ? theme === 'dark' ? "bg-blue-400" : "bg-blue-500"
-                    : theme === 'dark' ? "bg-gray-600 group-hover:bg-gray-500" : "bg-gray-300 group-hover:bg-gray-400"
+                  "absolute w-20 h-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                  isDragging
+                    ? "opacity-100"
+                    : "",
+                  theme === 'dark' ? "bg-blue-500" : "bg-blue-400"
                 )} />
               </div>
-              
+
               <div className="w-full flex-1">
                 {swap ? <PaperPane /> : <AppPane />}
               </div>
