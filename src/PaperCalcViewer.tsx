@@ -155,7 +155,8 @@ export default function PaperHtmlViewer() {
     setAppSrcDoc(null);
     setAppFile(new File([appBlob], manifest.app.split("/").pop() || "calculator.html", { type: "text/html" }));
 
-    if (manifest.layout) setView(manifest.layout);
+    // Default to split view when loading a bundle, or use manifest layout if specified
+    setView(manifest.layout || "split");
     if (typeof manifest.split === "number") setSplitPct(Math.min(85, Math.max(15, manifest.split)));
     if (manifest.orientation) setOrientation(manifest.orientation);
   };
