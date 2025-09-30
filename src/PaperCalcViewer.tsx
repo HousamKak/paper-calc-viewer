@@ -218,11 +218,13 @@ export default function PaperHtmlViewer() {
   // --- Drag split functionality ---
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   }, []);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
+    e.preventDefault();
 
     const container = document.querySelector('.split-container') as HTMLElement;
     if (!container) return;
@@ -238,28 +240,44 @@ export default function PaperHtmlViewer() {
       newSplit = (relativeY / rect.height) * 100;
     }
 
-    newSplit = Math.round(Math.max(15, Math.min(85, newSplit)));
+    newSplit = Math.round(Math.max(10, Math.min(90, newSplit)));
     setSplitPct(newSplit);
-  }, [isDragging, orientation]);
+  }, [isDragging, orientation, setSplitPct]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
   }, []);
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      const handleMove = (e: MouseEvent) => handleMouseMove(e);
+      const handleUp = (e: MouseEvent) => handleMouseUp(e);
+      
+      document.addEventListener('mousemove', handleMove, { capture: true, passive: false });
+      document.addEventListener('mouseup', handleUp, { capture: true, passive: false });
       document.body.style.cursor = orientation === 'horizontal' ? 'col-resize' : 'row-resize';
       document.body.style.userSelect = 'none';
+      document.body.style.pointerEvents = 'none';
+      
+      // Re-enable pointer events on the divider
+      const divider = document.querySelector('.resize-divider') as HTMLElement;
+      if (divider) {
+        divider.style.pointerEvents = 'auto';
+      }
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMove, { capture: true });
+        document.removeEventListener('mouseup', handleUp, { capture: true });
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.body.style.pointerEvents = '';
+        if (divider) {
+          divider.style.pointerEvents = '';
+        }
+      };
     }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
   }, [isDragging, handleMouseMove, handleMouseUp, orientation]);
 
   // --- Keyboard shortcuts ---
@@ -700,23 +718,24 @@ export default function PaperHtmlViewer() {
         <div className={classNames("flex-1 split-container", orientation === "horizontal" ? "" : "")}>
           {orientation === "horizontal" ? (
             <div className="w-full h-full flex relative">
-              <div className="h-full" style={{ width: `${splitPct}%` }}>
+              <div className="h-full" style={{ width: `${splitPct}%`, pointerEvents: isDragging ? 'none' : 'auto' }}>
                 {swap ? <AppPane /> : <PaperPane />}
               </div>
 
               {/* Draggable divider - ultra thin Apple style */}
               <div
                 className={classNames(
-                  "w-px h-full cursor-col-resize flex items-center justify-center group relative",
+                  "resize-divider w-px h-full cursor-col-resize flex items-center justify-center group relative z-10",
                   theme === 'dark' ? "bg-gray-700/50" : "bg-gray-300/50"
                 )}
                 onMouseDown={handleMouseDown}
+                style={{ minWidth: '5px', marginLeft: '-2px', marginRight: '-2px' }}
               >
                 {/* Invisible hit area for easier grabbing */}
-                <div className="absolute inset-y-0 -inset-x-2" />
+                <div className="absolute inset-y-0 -inset-x-3 cursor-col-resize" />
                 {/* Visible handle on hover */}
                 <div className={classNames(
-                  "absolute w-1 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                  "absolute w-1 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
                   isDragging
                     ? "opacity-100"
                     : "",
@@ -724,29 +743,30 @@ export default function PaperHtmlViewer() {
                 )} />
               </div>
 
-              <div className="h-full flex-1">
+              <div className="h-full flex-1" style={{ pointerEvents: isDragging ? 'none' : 'auto' }}>
                 {swap ? <PaperPane /> : <AppPane />}
               </div>
             </div>
           ) : (
             <div className="w-full h-full flex flex-col relative">
-              <div className="w-full" style={{ height: `${splitPct}%` }}>
+              <div className="w-full" style={{ height: `${splitPct}%`, pointerEvents: isDragging ? 'none' : 'auto' }}>
                 {swap ? <AppPane /> : <PaperPane />}
               </div>
 
               {/* Draggable divider - ultra thin Apple style */}
               <div
                 className={classNames(
-                  "w-full h-px cursor-row-resize flex items-center justify-center group relative",
+                  "resize-divider w-full h-px cursor-row-resize flex items-center justify-center group relative z-10",
                   theme === 'dark' ? "bg-gray-700/50" : "bg-gray-300/50"
                 )}
                 onMouseDown={handleMouseDown}
+                style={{ minHeight: '5px', marginTop: '-2px', marginBottom: '-2px' }}
               >
                 {/* Invisible hit area for easier grabbing */}
-                <div className="absolute inset-x-0 -inset-y-2" />
+                <div className="absolute inset-x-0 -inset-y-3 cursor-row-resize" />
                 {/* Visible handle on hover */}
                 <div className={classNames(
-                  "absolute w-20 h-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                  "absolute w-20 h-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
                   isDragging
                     ? "opacity-100"
                     : "",
@@ -754,7 +774,7 @@ export default function PaperHtmlViewer() {
                 )} />
               </div>
 
-              <div className="w-full flex-1">
+              <div className="w-full flex-1" style={{ pointerEvents: isDragging ? 'none' : 'auto' }}>
                 {swap ? <PaperPane /> : <AppPane />}
               </div>
             </div>
